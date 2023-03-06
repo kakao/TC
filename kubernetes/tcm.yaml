@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tc-meta
+  namespace: default
+data:
+  meta.ini: |
+    [connection_string]
+    mongos_source_hostname:port=mongos_target_hostname:port
+
+
+    [source_shardlist]
+    source_shard_name1=source_shard1_hostname1:port,source_shard1_hostname2:port,source_shard1_hostname3:port
+    source_shard_name2=source_shard2_hostname1:port,source_shard2_hostname2:port,source_shard2_hostname3:port
+    
+    [target_shardlist]
+    target_shard_name1(pod_prefix)=target_shard1_hostname1(pod_name):port,target_shard1_hostname2(pod_name):port,target_shard1_hostname3(pod_name):port
+    target_shard_name2(pod_prefix)=target_shard2_hostname1(pod_name):port,source_shard2_hostname2(pod_name):port,target_shard2_hostname3(pod_name):port
+   
+    [couple_server]
+    source_shard_name1=target_shard_name1
+    source_shard_name2=target_shard_name2
+
+    [namespace]
+    source_namespace1=target_namespace1
+    source_namespace2=target_namespace2
+
+    [db_home]
+    /source/dbpath/ = /target/dbpath/
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tcm
+  labels:
+    app: tcm
+  namespace: default
+spec:
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
+  selector:
+    app: tcm
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: tcm
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: tcm
+  serviceName: tcm-svc
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: tcm
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: tcm-app
+        image: idock.daumkakao.io/mongo/tc:TCM
+        imagePullPolicy: Always
+        env:
+        - name: SOURCE_ID
+          value: "source_id"
+        - name: SOURCE_PW
+          value: "source_pw"
+        - name: TARGET_ID
+          value: "target_id"
+        - name: TARGET_PW
+          value: "target_pw"
+        - name: K8S_HOST
+          value: "HOST"
+        - name: K8S_TOKEN
+          value: "TOKEN"
+        ports:
+        - containerPort: 80
+          name: web
+        volumeMounts:
+        - name: tc-config
+          mountPath: /etc/config
+      volumes:
+        - name: tc-config
+          configMap:
+            name: tc-meta
+---
+# ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tcm-ingress
+  namespace: default
+spec:
+  rules:
+  - host: hostname or ip
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: tcm
+            port:
+              number: 5000

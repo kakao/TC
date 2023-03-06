@@ -1,6 +1,10 @@
 # TC-Kubernetes
 
-*This version will be released soon.*
+## Image
+
+TCM: https://hub.docker.com/r/officialkakao/tcm
+
+TCA: https://hub.docker.com/r/officialkakao/tca
 
 ## Usage
 
@@ -18,8 +22,8 @@ To send data, you must set ssh passwordless login between source and target.
 kubectl create secret generic ssh-key-secret --from-file=id_rsa=.ssh/id_rsa --from-file=id_rsa.pub=.ssh/id_rsa.pub
 ```
 
-### 2. Add TC container is the chart
-Add a TC container to initContainer in the bitnami-mongodb chart.
+### 2. Add TCA to the chart
+Specify an init container with TC image in the bitnami-mongodb chart.
 [initContainer](https://github.com/bitnami/charts/blob/main/bitnami/mongodb-sharded/values.yaml#L1093)
 Also, add the volume and mount in the chart.
 
@@ -51,7 +55,9 @@ initContainers:
 ```
 
 
-### 3. Write the TCM chart and deploy it
+### 3. Write a chart for TCM and deploy it
+
+Please refer to the example chart (tcm.yaml)
 
 **1. sharded cluster**
 
@@ -131,6 +137,8 @@ Using the namespace and name from the above result, get the token as the followi
 
 $ kubectl describe secret -n kube-system dkos-token-abcde
 
+According to the kubernetes cluster's configuration, modify "kube-system" and "dkos" above the command.
+
 
 ```
         - name: K8S_HOST
@@ -138,8 +146,6 @@ $ kubectl describe secret -n kube-system dkos-token-abcde
         - name: K8S_TOKEN
           value: $(dkos-token-abcde.TOKEN)
 ```
-
-According to the kubernetes cluster's configuration, modify "kube-system4" and "dkos".
 
 **3. deploy tcm**
 
